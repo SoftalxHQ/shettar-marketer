@@ -3,23 +3,26 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { apiBase } from "@/lib/api";
-import { BrandShell } from "@/components/brand-shell";
-import { UiCard } from "@/components/ui-card";
-
-const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40";
+import { 
+  LogIn, 
+  Mail, 
+  Lock, 
+  Loader2, 
+  AlertCircle,
+  ChevronRight,
+  ArrowRight
+} from "lucide-react";
 
 export default function MarketerLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       const res = await fetch(`${apiBase()}/api/v1/marketers/login`, {
@@ -29,72 +32,126 @@ export default function MarketerLoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        toast.error(data.error || "Invalid credentials. Please try again.");
         return;
       }
       localStorage.setItem("marketer_token", data.token);
+      toast.success("Welcome back! Redirecting to dashboard...");
       router.push("/dashboard");
     } catch {
-      setError("Network error");
+      toast.error("Unable to connect to the server. Please check your internet.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <BrandShell>
-      <div className="mx-auto flex max-w-md flex-col gap-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Sign in</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Use the email and password from your welcome message.</p>
-        </div>
-        <UiCard title="Marketer credentials" description="Your account is managed by Shettar admin.">
-          <form onSubmit={submit} className="space-y-4">
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                className={inputClass}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                className={inputClass}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition hover:opacity-95 disabled:opacity-50"
-            >
-              {loading ? "Signing in…" : "Continue"}
-            </button>
-          </form>
-        </UiCard>
-        <p className="text-center text-xs text-muted-foreground">
-          Need help?{" "}
-          <Link href="https://shettar.com/support" className="font-medium text-primary underline-offset-2 hover:underline">
-            Contact support
-          </Link>
-        </p>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex items-center justify-center p-6">
+      {/* Decorative background gradients */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-violet-500/10 rounded-full blur-[120px]" />
       </div>
-    </BrandShell>
+
+      <div className="w-full max-w-xl relative z-10">
+        <div className="flex flex-col items-center mb-10">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[2rem] bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 font-black text-3xl mb-6 transform transition-transform hover:rotate-12 cursor-default">
+            S
+          </div>
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
+            Marketer Portal
+          </h1>
+          <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium text-center">
+            Sign in to track your referrals and commissions.
+          </p>
+        </div>
+
+        <div className="bg-white/70 dark:bg-slate-900/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden">
+          <div className="p-8 sm:p-12">
+            <form onSubmit={submit} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                  Email Address
+                </label>
+                <div className="relative group">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 pl-14 pr-5 py-5 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-lg"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label htmlFor="password" className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+                    Password
+                  </label>
+                  <Link href="https://shettar.com/support" className="text-xs font-bold text-indigo-600 hover:underline underline-offset-4">
+                    Forgot Password?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 pl-14 pr-5 py-5 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-lg"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 py-5 text-lg font-black text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98] group"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={24} />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In to Portal</span>
+                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+          
+          <div className="bg-slate-50/80 dark:bg-slate-800/30 p-6 text-center border-t border-slate-100 dark:border-slate-800">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Your account is managed by Shettar admin.{" "}
+              <Link href="https://shettar.com/support" className="text-indigo-600 font-bold hover:underline">
+                Need Help?
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center flex items-center justify-center gap-6">
+          <Link href="/" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors">
+            Terms of Use
+          </Link>
+          <span className="w-1 h-1 rounded-full bg-slate-300" />
+          <Link href="/" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors">
+            Privacy Policy
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

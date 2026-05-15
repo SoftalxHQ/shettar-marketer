@@ -3,15 +3,17 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  ShieldCheck, 
-  LogOut, 
-  Menu, 
-  X, 
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  LogOut,
+  Menu,
+  X,
   ChevronRight,
   TrendingUp,
-  Settings
+  Settings,
+  Wallet,
+  Landmark
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,14 +35,17 @@ export function BrandShell({
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Performance", href: "/dashboard/performance", icon: TrendingUp },
+    { name: "Finance", href: "/dashboard/finance", icon: Wallet },
+    { name: "Bank Accounts", href: "/dashboard/bank-accounts", icon: Landmark },
     { name: "Security", href: "/dashboard/security", icon: ShieldCheck },
   ];
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-50 flex">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -71,7 +76,7 @@ export function BrandShell({
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 group",
-                    isActive 
+                    isActive
                       ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold"
                       : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                   )}
@@ -105,7 +110,7 @@ export function BrandShell({
             <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-indigo-600 text-white font-bold">S</div>
             <span className="font-bold">Shettar</span>
           </div>
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
           >

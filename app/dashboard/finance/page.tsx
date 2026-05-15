@@ -22,15 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// Mock data since the backend doesn't have a finance endpoint yet
-const MOCK_TRANSACTIONS = [
-  { id: "TX-9282", type: "Salary", amount: 150000.00, status: "Success", date: "2026-05-15", description: "Monthly Base Salary — May" },
-  { id: "TX-9281", type: "Commission", amount: 12500.00, status: "Success", date: "2026-05-14", description: "Referral: Grand Oasis Hotel" },
-  { id: "TX-9280", type: "Withdrawal", amount: -120000.00, status: "Success", date: "2026-05-12", description: "Transfer to Bank Account" },
-  { id: "TX-9279", type: "Commission", amount: 8400.50, status: "Success", date: "2026-05-10", description: "Referral: Sky Lounge Apartments" },
-  { id: "TX-9278", type: "Withdrawal", amount: -25000.00, status: "Pending", date: "2026-05-09", description: "Transfer to Bank Account" },
-  { id: "TX-9277", type: "Salary", amount: 150000.00, status: "Success", date: "2026-04-15", description: "Monthly Base Salary — April" },
-];
+// Using real data from the backend
 
 export default function FinancePage() {
   const isClient = useIsClient();
@@ -76,10 +68,15 @@ export default function FinancePage() {
     );
   }
 
+  const marketerData = performance?.marketer || {};
   const commissionEarned = performance?.commission_earned || 0;
-  const lifetimeCommission = commissionEarned + 45000; // Mock: Add some past commission for demonstration
-  const availableMainBalance = 150000.00; // Mock available salary
-  const availableCommission = Math.max(commissionEarned - 12500, 0); // Mock available commission
+  
+  // Real Balances from Backend
+  const availableMainBalance = Number(marketerData.balance || 0); 
+  const availableCommission = Number(marketerData.commission_balance || 0); 
+  const lifetimeCommission = commissionEarned; 
+
+  const transactions = performance?.transactions || [];
 
   return (
     <BrandShell>
@@ -114,7 +111,7 @@ export default function FinancePage() {
             <div className="relative z-10">
               <p className="text-sm font-bold text-indigo-100 uppercase tracking-widest mb-1">Available Main Balance</p>
               <h2 className="text-4xl sm:text-5xl font-black tabular-nums tracking-tighter">
-                ₦{Number(availableMainBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                ₦{availableMainBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </h2>
             </div>
             {/* Background elements */}
@@ -135,7 +132,7 @@ export default function FinancePage() {
             <div className="relative z-10">
               <p className="text-sm font-bold text-emerald-100 uppercase tracking-widest mb-1">Available Commission</p>
               <h2 className="text-4xl sm:text-5xl font-black tabular-nums tracking-tighter">
-                ₦{Number(availableCommission).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                ₦{availableCommission.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </h2>
               <div className="mt-2 text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
                 All-time earned: ₦{Number(lifetimeCommission).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -177,52 +174,68 @@ export default function FinancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {MOCK_TRANSACTIONS.map((tx) => (
-                    <tr key={tx.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-5 font-mono text-xs font-bold text-slate-400">{tx.id}</td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "h-10 w-10 flex items-center justify-center rounded-xl",
-                            tx.type === "Withdrawal" 
-                              ? "bg-rose-50 dark:bg-rose-500/10 text-rose-500" 
-                              : tx.type === "Salary"
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500"
-                                : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500"
-                          )}>
-                            {tx.type === "Withdrawal" ? <ArrowUpRight size={18} /> : tx.type === "Salary" ? <Banknote size={18} /> : <ArrowDownLeft size={18} />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white">{tx.type}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{tx.description}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                          {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className={cn(
-                          "text-sm font-black tabular-nums",
-                          tx.amount < 0 ? "text-slate-900 dark:text-white" : tx.type === "Salary" ? "text-indigo-600 dark:text-indigo-400" : "text-emerald-600 dark:text-emerald-400"
-                        )}>
-                          {tx.amount < 0 ? "-" : "+"}₦{Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border",
-                          tx.status === "Success" 
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-                            : "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
-                        )}>
-                          {tx.status}
-                        </span>
+                  {transactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                        No transactions found.
                       </td>
                     </tr>
-                  ))}
+                  )}
+                  {transactions.map((tx: any) => {
+                    const isWithdrawal = tx.transaction_type === "withdrawal";
+                    const isSalary = tx.description?.toLowerCase().includes("salary") || tx.metadata?.type === "salary";
+                    const displayType = isWithdrawal ? "Withdrawal" : isSalary ? "Salary" : "Commission";
+                    const amountValue = Number(tx.amount);
+                    
+                    return (
+                      <tr key={tx.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="px-6 py-5 font-mono text-xs font-bold text-slate-400">TX-{tx.id}</td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "h-10 w-10 flex items-center justify-center rounded-xl",
+                              isWithdrawal 
+                                ? "bg-rose-50 dark:bg-rose-500/10 text-rose-500" 
+                                : isSalary
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500"
+                                  : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500"
+                            )}>
+                              {isWithdrawal ? <ArrowUpRight size={18} /> : isSalary ? <Banknote size={18} /> : <ArrowDownLeft size={18} />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white">{displayType}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{tx.description || displayType}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                            {new Date(tx.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className={cn(
+                            "text-sm font-black tabular-nums",
+                            isWithdrawal ? "text-slate-900 dark:text-white" : isSalary ? "text-indigo-600 dark:text-indigo-400" : "text-emerald-600 dark:text-emerald-400"
+                          )}>
+                            {isWithdrawal ? "-" : "+"}₦{Math.abs(amountValue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </p>
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border",
+                            tx.status === "completed" || tx.status === "Success"
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                              : tx.status === "failed"
+                                ? "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
+                                : "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+                          )}>
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

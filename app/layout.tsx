@@ -12,6 +12,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Shettar — Marketer portal",
   description: "Track referrals, performance, and account security",
+  icons: {
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    apple: [{ url: "/favicon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

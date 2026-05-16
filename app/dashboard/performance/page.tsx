@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiBase } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -27,7 +27,7 @@ export default function PerformancePage() {
 
     (async () => {
       try {
-        const res = await fetch(`${apiBase()}/api/v1/marketers/me/performance`, {
+        const res = await apiFetch(`/api/v1/marketers/me/performance`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();

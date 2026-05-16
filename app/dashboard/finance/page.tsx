@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
-import { apiBase } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
+import { useRouter } from "next/navigation";
 import { useIsClient } from "@/lib/useIsClient";
 import { 
   Wallet, 
@@ -34,27 +35,33 @@ export default function FinancePage() {
   useEffect(() => {
     if (!isClient || !token) return;
 
+    let cancelled = false;
+
     (async () => {
       try {
-        const res = await fetch(`${apiBase()}/api/v1/marketers/me/performance`, {
+        const res = await apiFetch(`/api/v1/marketers/me/finance`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();
-        if (res.ok) {
-          setPerformance(json);
-        }
+        if (cancelled) return;
+        if (res.ok) setPerformance(json);
       } catch (err) {
-        console.error("Failed to fetch performance for finance", err);
+        if (cancelled) return;
+        console.error("Failed to fetch finance data", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isClient, token]);
 
+  const router = useRouter();
+
   const handleWithdrawal = () => {
-    toast.info("Withdrawal feature coming soon. Please contact support to manually request payout.", {
-      description: "We are currently automating the payout system.",
-    });
+    router.push("/dashboard/finance/withdraw");
   };
 
   if (!isClient || loading) {
@@ -189,7 +196,9 @@ export default function FinancePage() {
                     
                     return (
                       <tr key={tx.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                        <td className="px-6 py-5 font-mono text-xs font-bold text-slate-400">TX-{tx.id}</td>
+                        <td className="px-6 py-5 font-mono text-xs font-bold text-slate-400">
+                          {tx.reference_code || `STRTX${String(tx.id).padStart(8, "0")}`}
+                        </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <div className={cn(

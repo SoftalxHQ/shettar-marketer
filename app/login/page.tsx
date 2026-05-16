@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
 import { toast } from "sonner";
 import { apiBase } from "@/lib/api";
 import { 
@@ -15,8 +15,10 @@ import {
   ArrowRight
 } from "lucide-react";
 
-export default function MarketerLoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionReason = searchParams.get("reason");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,21 @@ export default function MarketerLoginPage() {
             Sign in to track your referrals and commissions.
           </p>
         </div>
+
+        {sessionReason && (
+          <div className={`mb-6 flex items-start gap-3 rounded-2xl border px-5 py-4 ${
+            sessionReason === "account_inactive"
+              ? "bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400"
+              : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400"
+          }`}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            <p className="text-sm font-semibold">
+              {sessionReason === "account_inactive"
+                ? "Your account has been deactivated. Please contact support if you believe this is an error."
+                : "Your session has expired. Please sign in again to continue."}
+            </p>
+          </div>
+        )}
 
         <div className="bg-white/70 dark:bg-slate-900/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden">
           <div className="p-8 sm:p-12">
@@ -153,5 +170,13 @@ export default function MarketerLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MarketerLoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { apiBase } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -22,13 +22,18 @@ import {
   ShieldCheck
 } from "lucide-react";
 
-type PerformancePayload = Record<string, unknown> & {
+type DashboardPayload = {
   marketer?: { full_name?: string; referrer_code?: string; email?: string };
+  total_referrals?: number;
+  active_businesses?: number;
+  commission_earned?: number;
+  conversion_rate?: number;
+  error?: string;
 };
 
 export default function MarketerDashboardPage() {
   const isClient = useIsClient();
-  const [data, setData] = useState<PerformancePayload | null>(null);
+  const [data, setData] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const token = isClient ? localStorage.getItem("marketer_token") : null;
@@ -39,10 +44,10 @@ export default function MarketerDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${apiBase()}/api/v1/marketers/me/performance`, {
+        const res = await apiFetch(`/api/v1/marketers/me/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const json = (await res.json()) as PerformancePayload;
+        const json = (await res.json()) as DashboardPayload;
         if (cancelled) return;
         if (!res.ok) {
           setError((json.error as string) || "Failed to load dashboard data");
@@ -120,7 +125,7 @@ export default function MarketerDashboardPage() {
       <BrandShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="animate-spin text-indigo-600" size={32} />
-          <p className="text-slate-500 font-medium animate-pulse">Synchronizing your performance data...</p>
+          <p className="text-slate-500 font-medium animate-pulse">Loading dashboard...</p>
         </div>
       </BrandShell>
     );

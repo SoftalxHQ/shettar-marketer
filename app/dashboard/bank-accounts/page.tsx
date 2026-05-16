@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
-import { apiBase } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { 
   Landmark, 
@@ -24,6 +24,7 @@ type BankAccount = {
   account_number: string;
   account_name: string;
   bank_code: string;
+  bank_verified?: boolean;
   currency: string;
   created_at: string;
 };
@@ -48,27 +49,23 @@ export default function BankAccountsPage() {
   
   const [resolveStatus, setResolveStatus] = useState<"idle" | "resolving" | "resolved" | "manual">("idle");
   const [creating, setCreating] = useState(false);
+  
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isClient || !token) return;
 
-    const fetchInitialData = async () => {
-      setBanksLoading(true);
-      try {
-        // Fetch banks
-        const banksRes = await fetch(`${apiBase()}/api/v1/banks`);
-        if (banksRes.ok) {
-          const data = await banksRes.json();
-          setBanks(data.data || data || []);
-        }
+    let cancelled = false;
 
-        // Fetch current marketer bank details
-        const perfRes = await fetch(`${apiBase()}/api/v1/marketers/me/performance`, {
-          headers: { Authorization: `Bearer ${token}` }
+    const loadBankDetails = async () => {
+      try {
+        const bankRes = await apiFetch(`/api/v1/marketers/me/bank_details`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        if (perfRes.ok) {
-          const perfData = await perfRes.json();
-          const m = perfData.marketer;
+        if (cancelled) return;
+        if (bankRes.ok) {
+          const { bank_details: m } = await bankRes.json();
           if (m?.bank_name && m?.account_number) {
             setAccounts([{
               id: "current_account",
@@ -76,20 +73,41 @@ export default function BankAccountsPage() {
               account_number: m.account_number,
               account_name: m.account_name,
               bank_code: m.bank_code,
+              bank_verified: m.bank_verified,
               currency: "NGN",
-              created_at: new Date().toISOString() // We don't have the exact updated_at, but it's fine for display
+              created_at: new Date().toISOString(),
             }]);
           }
         }
       } catch (err) {
-        console.error("Failed to load data", err);
+        if (!cancelled) console.error("Failed to load bank details", err);
       } finally {
-        setBanksLoading(false);
-        setInitialLoading(false);
+        if (!cancelled) setInitialLoading(false);
       }
     };
-    
-    fetchInitialData();
+
+    const loadBanksList = async () => {
+      setBanksLoading(true);
+      try {
+        const banksRes = await fetch(`${apiBase()}/api/v1/banks`);
+        if (cancelled) return;
+        if (banksRes.ok) {
+          const data = await banksRes.json();
+          setBanks(data.data || data || []);
+        }
+      } catch (err) {
+        if (!cancelled) console.error("Failed to load banks list", err);
+      } finally {
+        if (!cancelled) setBanksLoading(false);
+      }
+    };
+
+    loadBankDetails();
+    loadBanksList();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isClient, token]);
 
   // Auto-resolve account
@@ -123,21 +141,11 @@ export default function BankAccountsPage() {
     setForm((prev) => ({ ...prev, bank_code: code, bank_name: bank?.name ?? "" }));
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.account_name.trim()) {
-      toast.error("Account name is required.");
-      return;
-    }
-    
-    if (accounts.length > 0 && !window.confirm("This will replace your current bank account. Continue?")) {
-      return;
-    }
-
+  const submitAccount = async () => {
     setCreating(true);
     
     try {
-      const res = await fetch(`${apiBase()}/api/v1/marketers/me/bank_details`, {
+      const res = await apiFetch(`/api/v1/marketers/me/bank_details`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
@@ -161,6 +169,7 @@ export default function BankAccountsPage() {
         account_number: form.account_number,
         account_name: form.account_name,
         bank_code: form.bank_code,
+        bank_verified: false,
         currency: "NGN",
         created_at: new Date().toISOString()
       };
@@ -176,22 +185,41 @@ export default function BankAccountsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to remove this bank account?")) {
-      try {
-        const res = await fetch(`${apiBase()}/api/v1/marketers/me/bank_details`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (!res.ok) throw new Error("Failed to delete bank details");
-
-        setAccounts([]);
-        toast.success("Bank account removed.");
-      } catch (err) {
-        toast.error("Failed to remove bank account.");
-      }
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.account_name.trim()) {
+      toast.error("Account name is required.");
+      return;
     }
+    
+    if (accounts.length > 0) {
+      setShowReplaceModal(true);
+      return;
+    }
+
+    submitAccount();
+  };
+
+  const confirmDelete = async (id: string) => {
+    try {
+      const res = await apiFetch(`/api/v1/marketers/me/bank_details`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!res.ok) throw new Error("Failed to delete bank details");
+
+      setAccounts([]);
+      toast.success("Bank account removed.");
+    } catch (err) {
+      toast.error("Failed to remove bank account.");
+    } finally {
+      setShowDeleteModal(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setShowDeleteModal(id);
   };
 
   if (!isClient || initialLoading) {
@@ -199,6 +227,7 @@ export default function BankAccountsPage() {
       <BrandShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="animate-spin text-indigo-600" size={32} />
+          <p className="text-slate-500 font-medium animate-pulse">Loading bank accounts...</p>
         </div>
       </BrandShell>
     );
@@ -206,6 +235,65 @@ export default function BankAccountsPage() {
 
   return (
     <BrandShell>
+      {showReplaceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="h-16 w-16 bg-amber-50 dark:bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="text-xl font-black text-center text-slate-900 dark:text-white mb-2">Replace Account?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium mb-8">
+              This will replace your current bank account. Are you sure you want to continue?
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => setShowReplaceModal(false)}
+                className="py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setShowReplaceModal(false);
+                  submitAccount();
+                }}
+                className="py-3 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all"
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="h-16 w-16 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-xl font-black text-center text-slate-900 dark:text-white mb-2">Remove Account?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium mb-8">
+              Are you sure you want to remove this bank account? You will need to add a new one to withdraw funds.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => setShowDeleteModal(null)}
+                className="py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => confirmDelete(showDeleteModal)}
+                className="py-3 px-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/20 transition-all"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Bank Accounts</h1>
@@ -322,13 +410,24 @@ export default function BankAccountsPage() {
                       <div className="h-12 w-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                         <Landmark size={24} />
                       </div>
-                      <button 
-                        onClick={() => handleDelete(acc.id)}
-                        className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                        title="Remove Account"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {acc.bank_verified ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 flex items-center gap-1 border border-emerald-200 dark:border-emerald-500/20">
+                          <CheckCircle2 size={12} /> Verified
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 flex items-center gap-1 border border-amber-200 dark:border-amber-500/20">
+                            <AlertCircle size={12} /> Pending Verification
+                          </span>
+                          <button 
+                            onClick={() => handleDelete(acc.id)}
+                            className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                            title="Remove Account"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     
                     <div>

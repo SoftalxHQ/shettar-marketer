@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { apiBase } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -33,7 +33,7 @@ export default function SecurityPage() {
 
     setPwLoading(true);
     try {
-      const res = await fetch(`${apiBase()}/api/v1/marketers/me/password`, {
+      const res = await apiFetch(`/api/v1/marketers/me/password`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

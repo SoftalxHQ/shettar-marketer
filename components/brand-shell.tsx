@@ -16,6 +16,7 @@ import {
   Landmark
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function BrandShell({
   children,
@@ -57,14 +58,17 @@ export function BrandShell({
         !isSidebarOpen && "-translate-x-full"
       )}>
         <div className="h-full flex flex-col p-6">
-          <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 font-black text-xl">
-              S
+          <div className="flex items-center justify-between gap-3 mb-10 px-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 font-black text-xl">
+                S
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold tracking-tight">Shettar</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Marketer</p>
+              </div>
             </div>
-            <div>
-              <p className="text-lg font-bold tracking-tight">Shettar</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Marketer</p>
-            </div>
+            <ThemeToggle className="hidden lg:inline-flex shrink-0" />
           </div>
 
           <nav className="flex-1 space-y-1">
@@ -110,12 +114,15 @@ export function BrandShell({
             <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-indigo-600 text-white font-bold">S</div>
             <span className="font-bold">Shettar</span>
           </div>
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-          >
-            <Menu size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 lg:p-10">

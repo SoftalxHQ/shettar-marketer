@@ -6,12 +6,12 @@ import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
-import { 
-  ShieldCheck, 
-  AlertCircle, 
-  CheckCircle2, 
-  Loader2 
-} from "lucide-react";
+import { ShieldCheck, Loader2 } from "lucide-react";
+import {
+  formButtonPrimaryInlineClass,
+  formInputClass,
+  formLabelClass,
+} from "@/lib/form-styles";
 
 export default function SecurityPage() {
   const isClient = useIsClient();
@@ -77,16 +77,16 @@ export default function SecurityPage() {
           icon={ShieldCheck}
           className="max-w-2xl"
         >
-          <form onSubmit={changePassword} className="space-y-6 mt-4">
-            <div className="grid gap-6">
+          <form onSubmit={changePassword} className="space-y-4 mt-4">
+            <div className="grid gap-4">
               <div className="space-y-2">
-                <label htmlFor="current_password" className="text-sm font-bold uppercase tracking-widest ml-1 text-slate-500">
+                <label htmlFor="current_password" className={formLabelClass}>
                   Current Password
                 </label>
                 <input
                   id="current_password"
                   type="password"
-                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-5 py-4 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                  className={formInputClass}
                   value={currPass}
                   onChange={(e) => setCurrPass(e.target.value)}
                   placeholder="••••••••"
@@ -94,15 +94,15 @@ export default function SecurityPage() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="new_password" className="text-sm font-bold uppercase tracking-widest ml-1 text-slate-500">
+                  <label htmlFor="new_password" className={formLabelClass}>
                     New Password
                   </label>
                   <input
                     id="new_password"
                     type="password"
-                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-5 py-4 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    className={formInputClass}
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
                     placeholder="Min. 8 characters"
@@ -111,13 +111,13 @@ export default function SecurityPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="new_password_confirmation" className="text-sm font-bold uppercase tracking-widest ml-1 text-slate-500">
+                  <label htmlFor="new_password_confirmation" className={formLabelClass}>
                     Confirm New Password
                   </label>
                   <input
                     id="new_password_confirmation"
                     type="password"
-                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-5 py-4 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    className={formInputClass}
                     value={newPass2}
                     onChange={(e) => setNewPass2(e.target.value)}
                     placeholder="Repeat new password"
@@ -131,11 +131,11 @@ export default function SecurityPage() {
             <button
               type="submit"
               disabled={pwLoading}
-              className="inline-flex items-center gap-3 rounded-2xl bg-indigo-600 px-8 py-4 text-sm font-black text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+              className={formButtonPrimaryInlineClass}
             >
               {pwLoading ? (
                 <>
-                  <Loader2 className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin" size={18} />
                   <span>Updating...</span>
                 </>
               ) : (

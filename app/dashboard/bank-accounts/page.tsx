@@ -14,6 +14,13 @@ import {
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  formButtonPrimaryClass,
+  formInputClass,
+  formInputMonoClass,
+  formLabelClass,
+  formSelectClass,
+} from "@/lib/form-styles";
 import { toast } from "sonner";
 
 type Bank = { id: number; name: string; code: string };
@@ -304,14 +311,14 @@ export default function BankAccountsPage() {
           {/* Add Account Form */}
           <div className="lg:col-span-1">
             <UiCard title="Add New Account" icon={Landmark} description="Link a new bank account to receive your payouts.">
-              <form onSubmit={handleAdd} className="mt-6 space-y-5">
+              <form onSubmit={handleAdd} className="mt-4 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Bank</label>
+                  <label className={formLabelClass}>Bank</label>
                   {banksLoading ? (
-                    <div className="h-[52px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-2xl w-full" />
+                    <div className="h-11 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl w-full" />
                   ) : (
                     <select
-                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-4 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium appearance-none"
+                      className={formSelectClass}
                       value={form.bank_code}
                       onChange={(e) => handleBankChange(e.target.value)}
                       required
@@ -325,10 +332,10 @@ export default function BankAccountsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Account Number</label>
+                  <label className={formLabelClass}>Account Number</label>
                   <input
                     type="text"
-                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-4 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono text-lg"
+                    className={formInputMonoClass}
                     placeholder="0123456789"
                     maxLength={10}
                     value={form.account_number}
@@ -338,7 +345,7 @@ export default function BankAccountsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                  <label className={cn(formLabelClass, "flex items-center gap-2")}>
                     Account Name
                     {resolveStatus === "manual" && (
                       <span className="text-[10px] text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-full">Manual Entry</span>
@@ -348,8 +355,10 @@ export default function BankAccountsPage() {
                     <input
                       type="text"
                       className={cn(
-                        "w-full rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-4 text-slate-900 dark:text-white outline-none transition-all font-medium",
-                        resolveStatus === "resolved" ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-slate-50 dark:bg-slate-900/50 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500"
+                        formInputClass,
+                        resolveStatus === "resolved"
+                          ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800"
+                          : "",
                       )}
                       placeholder={
                         resolveStatus === "resolving" ? "Verifying account..." :
@@ -381,7 +390,7 @@ export default function BankAccountsPage() {
                 <button
                   type="submit"
                   disabled={creating || resolveStatus === "resolving" || !form.account_name.trim()}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className={formButtonPrimaryClass}
                 >
                   {creating ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
                   <span>{creating ? "Adding Account..." : "Save Bank Account"}</span>

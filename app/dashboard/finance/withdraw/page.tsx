@@ -17,6 +17,12 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  formButtonPrimaryClass,
+  formInputClass,
+  formInputMonoClass,
+  formLabelClass,
+} from "@/lib/form-styles";
 
 interface WithdrawPreview {
   amount: number;
@@ -185,7 +191,7 @@ export default function WithdrawalPage() {
               </div>
             </div>
 
-            <form onSubmit={handleWithdraw} className="space-y-6">
+            <form onSubmit={handleWithdraw} className="space-y-4">
               {!isOtpStep ? (
                 <>
                   <div className="space-y-4">
@@ -282,14 +288,14 @@ export default function WithdrawalPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <label htmlFor="amount" className="text-xs font-bold uppercase tracking-widest text-slate-400">Amount (₦)</label>
+                    <label htmlFor="amount" className={formLabelClass}>Amount (₦)</label>
                     <input
                       id="amount"
                       type="text"
                       inputMode="decimal"
                       autoComplete="off"
                       placeholder="0.00"
-                      className="w-full h-14 px-4 text-xl font-bold bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all outline-none"
+                      className={cn(formInputMonoClass, "font-bold")}
                       value={amount}
                       onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
                       onWheel={(e) => e.currentTarget.blur()}
@@ -337,8 +343,8 @@ export default function WithdrawalPage() {
                   )}
                 </>
               ) : (
-                <div className="space-y-6 py-4">
-                  <div className="space-y-4">
+                <div className="space-y-4 py-2">
+                  <div className="space-y-3">
                     <label htmlFor="otp" className="text-sm font-bold text-slate-900 dark:text-white text-center block">Verification Code</label>
                     <p className="text-xs text-center text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                       Enter the 6-digit code sent to your email to confirm this transaction.
@@ -349,7 +355,10 @@ export default function WithdrawalPage() {
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       placeholder="000000"
-                      className="w-full h-16 text-3xl text-center font-black tracking-[0.5em] text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all outline-none caret-indigo-600"
+                      className={cn(
+                        formInputClass,
+                        "text-center font-bold tracking-[0.4em] caret-indigo-600",
+                      )}
                       value={otp}
                       maxLength={6}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
@@ -389,7 +398,7 @@ export default function WithdrawalPage() {
 
               <button
                 type="submit"
-                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100"
+                className={formButtonPrimaryClass}
                 disabled={isSubmitting || !amount || Number(amount) > currentBalance || (isOtpStep && otp.length < 6) || !marketerData.bank_code || !marketerData.bank_verified}
               >
                 {isSubmitting ? (

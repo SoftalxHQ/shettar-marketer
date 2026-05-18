@@ -26,7 +26,8 @@ type DashboardPayload = {
   marketer?: { full_name?: string; referrer_code?: string; email?: string };
   total_referrals?: number;
   active_businesses?: number;
-  commission_earned?: number;
+  verified_businesses?: number;
+  referral_commission_earned?: number;
   conversion_rate?: number;
   error?: string;
 };
@@ -149,7 +150,7 @@ export default function MarketerDashboardPage() {
               Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">{(m as any).full_name}</span>
             </h1>
             <p className="mt-2 text-lg text-slate-500 dark:text-slate-400 font-medium italic">
-              Tracking your referrals and earned commissions in real-time.
+              Commissions apply only after referred businesses are fully verified.
             </p>
           </div>
 
@@ -176,14 +177,14 @@ export default function MarketerDashboardPage() {
             color="indigo"
           />
           <StatCard 
-            label="Active Businesses" 
-            value={String(data.active_businesses ?? "0")} 
+            label="Verified Businesses" 
+            value={String(data.verified_businesses ?? data.active_businesses ?? "0")} 
             icon={Home} 
             color="blue"
           />
           <StatCard 
-            label="Commission Earned" 
-            value={`₦${Number(data.commission_earned || 0).toLocaleString()}`} 
+            label="Referral Commission" 
+            value={`₦${Number(data.referral_commission_earned || 0).toLocaleString()}`} 
             icon={Banknote} 
             color="emerald"
           />

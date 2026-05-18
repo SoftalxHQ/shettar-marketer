@@ -22,13 +22,16 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+type CommissionTier = { min_rooms: number; max_rooms: number | null; amount: number };
+
 type FinanceSummary = {
   marketer?: {
     balance?: number;
     commission_balance?: number;
     full_name?: string;
   };
-  commission_earned?: number;
+  referral_commission_earned?: number;
+  commission_tiers?: CommissionTier[];
 };
 
 type Transaction = {
@@ -219,7 +222,13 @@ export default function FinancePage() {
   const marketerData = summary?.marketer || {};
   const availableMainBalance = Number(marketerData.balance || 0);
   const availableCommission = Number(marketerData.commission_balance || 0);
-  const lifetimeCommission = summary?.commission_earned || 0;
+  const referralEarned = summary?.referral_commission_earned ?? 0;
+  const tiers = summary?.commission_tiers ?? [];
+
+  const tierLabel = (tier: CommissionTier) => {
+    if (tier.max_rooms == null) return `${tier.min_rooms}+ rooms`;
+    return `${tier.min_rooms}–${tier.max_rooms} rooms`;
+  };
 
   return (
     <BrandShell>
@@ -267,12 +276,28 @@ export default function FinancePage() {
               <h2 className="text-4xl sm:text-5xl font-black tabular-nums tracking-tighter">
                 ₦{availableCommission.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </h2>
-              <div className="mt-2 text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
-                All-time earned: ₦{Number(lifetimeCommission).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
+              <p className="mt-2 text-[10px] font-bold text-emerald-100 uppercase tracking-widest">
+                Referral commission earned: ₦{Number(referralEarned).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </p>
             </div>
           </div>
         </section>
+
+        {tiers.length > 0 && (
+          <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-3">
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Referral commission tiers</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              You earn a <strong>one-time</strong> payout when each referred business is fully verified. The amount depends on how many rooms the property has at verification.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {tiers.map((tier, i) => (
+                <span key={i} className="text-xs px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 font-semibold">
+                  {tierLabel(tier)} → ₦{Number(tier.amount).toLocaleString()}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">

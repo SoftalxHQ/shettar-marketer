@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
-import { apiBase, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import { useIsClient } from "@/lib/useIsClient";
 import { toast } from "sonner";
@@ -18,12 +18,33 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface CommissionPreview {
+interface WithdrawPreview {
   amount: number;
-  commission_rate: number;
   flat_fee: number;
-  commission_amount: number;
   net_amount: number;
+}
+
+/** Matches PaystackService.transfer_fee — tiered flat fee, not a percentage */
+function transferFee(amount: number): number {
+  if (amount <= 5_000) return 10;
+  if (amount <= 50_000) return 25;
+  return 50;
+}
+
+function buildPreview(withdrawAmount: number): WithdrawPreview {
+  const flat_fee = transferFee(withdrawAmount);
+  return {
+    amount: withdrawAmount,
+    flat_fee,
+    net_amount: Math.round((withdrawAmount - flat_fee) * 100) / 100,
+  };
+}
+
+function sanitizeAmountInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const dot = cleaned.indexOf(".");
+  if (dot === -1) return cleaned;
+  return `${cleaned.slice(0, dot)}.${cleaned.slice(dot + 1).replace(/\./g, "")}`;
 }
 
 export default function WithdrawalPage() {
@@ -36,9 +57,11 @@ export default function WithdrawalPage() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otp, setOtp] = useState("");
   
-  const [preview, setPreview] = useState<CommissionPreview | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preview, setPreview] = useState<WithdrawPreview | null>(null);
+  const [previewPending, setPreviewPending] = useState(false);
+
+  const PREVIEW_DEBOUNCE_MS = 2000;
 
   const token = isClient ? localStorage.getItem("marketer_token") : null;
 
@@ -47,33 +70,32 @@ export default function WithdrawalPage() {
     "Content-Type": "application/json",
   }), [token]);
 
+  const withdrawAmount = parseFloat(amount);
+
   useEffect(() => {
     const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) { setPreview(null); return; }
+    if (isNaN(num) || num <= 0) {
+      setPreview(null);
+      setPreviewPending(false);
+      return;
+    }
 
-    const timer = setTimeout(async () => {
-      try {
-        setPreviewLoading(true);
-        const res = await fetch(
-          `${apiBase()}/api/v1/marketers/me/commission_preview?amount=${num}`,
-          { headers: getHeaders() }
-        );
-        if (res.ok) setPreview(await res.json());
-      } catch { /* silent */ } finally {
-        setPreviewLoading(false);
-      }
-    }, 400);
+    setPreview(null);
+    setPreviewPending(true);
+    const timer = setTimeout(() => {
+      setPreview(buildPreview(num));
+      setPreviewPending(false);
+    }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [amount, getHeaders]);
+  }, [amount]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) { toast.error("Please enter an amount"); return; }
     
-    const withdrawAmount = parseFloat(amount);
     if (isNaN(withdrawAmount) || withdrawAmount <= 0) { toast.error("Please enter a valid amount"); return; }
-    
+
     const availableBalance = walletType === "balance" ? Number(profile?.balance || 0) : Number(profile?.commission_balance || 0);
     if (withdrawAmount > availableBalance) { toast.error("Insufficient funds"); return; }
 
@@ -263,12 +285,18 @@ export default function WithdrawalPage() {
                     <label htmlFor="amount" className="text-xs font-bold uppercase tracking-widest text-slate-400">Amount (₦)</label>
                     <input
                       id="amount"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       placeholder="0.00"
                       className="w-full h-14 px-4 text-xl font-bold bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all outline-none"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      This is the full amount withdrawn from your wallet. Transfer fee is deducted before payout (see breakdown below).
+                    </p>
                     {amount && !isNaN(Number(amount)) && Number(amount) > currentBalance && (
                       <p className="text-xs font-bold text-rose-500 flex items-center gap-1">
                         <AlertCircle size={14} /> Amount exceeds available balance
@@ -276,31 +304,35 @@ export default function WithdrawalPage() {
                     )}
                   </div>
 
-                  {(preview || previewLoading) && parseFloat(amount) > 0 && (
+                  {(previewPending || preview) && (
                     <div className="bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl p-5 border border-indigo-100 dark:border-indigo-500/20">
                       <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-4">Transaction Breakdown</p>
-                      {previewLoading ? (
-                        <div className="flex items-center gap-2 text-sm font-bold text-indigo-600">
-                          <Loader2 size={16} className="animate-spin" /> Calculating...
+                      {previewPending ? (
+                        <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 py-2">
+                          <Loader2 size={16} className="animate-spin" />
+                          Calculating...
                         </div>
-                      ) : preview && (
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-bold text-slate-600 dark:text-slate-400">Withdrawal amount</span>
-                            <span className="font-black text-slate-900 dark:text-white">{fmt(preview.amount)}</span>
-                          </div>
-                          {(preview.flat_fee ?? 0) > 0 && (
+                      ) : preview ? (
+                        <>
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-bold text-slate-600 dark:text-slate-400">Withdrawal amount</span>
+                              <span className="font-black text-slate-900 dark:text-white">{fmt(preview.amount)}</span>
+                            </div>
                             <div className="flex justify-between text-sm">
                               <span className="font-bold text-slate-600 dark:text-slate-400">Transfer fee</span>
                               <span className="font-black text-rose-500">− {fmt(preview.flat_fee)}</span>
                             </div>
-                          )}
-                          <div className="border-t border-indigo-200 dark:border-indigo-500/20 pt-3 flex justify-between text-sm">
-                            <span className="font-black text-indigo-900 dark:text-indigo-300">You will receive</span>
-                            <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg">{fmt(preview.net_amount)}</span>
+                            <div className="border-t border-indigo-200 dark:border-indigo-500/20 pt-3 flex justify-between text-sm">
+                              <span className="font-black text-indigo-900 dark:text-indigo-300">You will receive</span>
+                              <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg">{fmt(preview.net_amount)}</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-4">
+                            Transfer fee: ₦10 up to ₦5,000 · ₦25 up to ₦50,000 · ₦50 above (Paystack)
+                          </p>
+                        </>
+                      ) : null}
                     </div>
                   )}
                 </>

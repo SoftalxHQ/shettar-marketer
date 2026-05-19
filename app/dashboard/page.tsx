@@ -12,7 +12,6 @@ import {
   Users, 
   Home, 
   Banknote, 
-  Percent,
   User,
   Copy,
   CheckCircle2,
@@ -28,7 +27,6 @@ type DashboardPayload = {
   active_businesses?: number;
   verified_businesses?: number;
   referral_commission_earned?: number;
-  conversion_rate?: number;
   error?: string;
 };
 
@@ -169,7 +167,7 @@ export default function MarketerDashboardPage() {
         </header>
 
         {/* Stats Grid */}
-        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard 
             label="Total Referrals" 
             value={String(data.total_referrals ?? "0")} 
@@ -187,12 +185,6 @@ export default function MarketerDashboardPage() {
             value={`₦${Number(data.referral_commission_earned || 0).toLocaleString()}`} 
             icon={Banknote} 
             color="emerald"
-          />
-          <StatCard 
-            label="Conversion Rate" 
-            value={`${data.conversion_rate ?? "0"}%`} 
-            icon={Percent} 
-            color="violet"
           />
         </section>
 

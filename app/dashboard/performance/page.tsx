@@ -5,6 +5,7 @@ import type { ElementType } from "react";
 import { apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
+import { ReferralGrowthChart } from "@/components/referral-growth-chart";
 import { UiCard } from "@/components/ui-card";
 import {
   TrendingUp,
@@ -30,7 +31,7 @@ type PerformancePayload = {
   period_referrals?: number;
   period_start?: string;
   period_end?: string;
-  period_granularity?: "daily" | "monthly";
+  period_granularity?: "daily" | "weekly" | "monthly";
   error?: string;
 };
 
@@ -92,6 +93,13 @@ function periodLabel(preset: PeriodPreset): string {
 
 function formatChartDate(dateStr: string, granularity?: string) {
   const d = new Date(dateStr);
+  if (granularity === "weekly") {
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    const startLabel = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const endLabel = end.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `${startLabel} – ${endLabel}`;
+  }
   if (granularity === "monthly") {
     return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
   }
@@ -213,9 +221,7 @@ export default function PerformancePage() {
   };
 
   const growth = data?.growth_analysis ?? [];
-  const activeGrowthDays = growth.filter((d) => d.referrals > 0);
   const periodTotal = data?.period_referrals ?? growth.reduce((sum, d) => sum + d.referrals, 0);
-  const maxReferrals = Math.max(...growth.map((d) => d.referrals), 1);
   const granularity = data?.period_granularity ?? "daily";
 
   return (
@@ -336,42 +342,27 @@ export default function PerformancePage() {
                   <BarChart3 size={40} className="opacity-20" />
                   <p className="font-medium">No growth data available yet.</p>
                 </div>
-              ) : activeGrowthDays.length === 0 ? (
-                <div className="h-64 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-3 text-slate-400">
-                  <BarChart3 size={40} className="opacity-20" />
-                  <p className="font-medium">No new referrals in this period.</p>
-                  <p className="text-sm text-slate-400">Try another date range or share your referral code.</p>
+              ) : periodTotal === 0 ? (
+                <div className="space-y-4 -mx-6 sm:-mx-8">
+                  <ReferralGrowthChart
+                    data={growth}
+                    granularity={granularity}
+                    formatDate={formatChartDate}
+                  />
+                  <p className="text-center text-sm text-slate-400 px-6 sm:px-8">
+                    No new referrals in this period. Try another date range or share your referral code.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="flex items-end justify-between gap-0.5 sm:gap-1 h-48 px-1 sm:px-2 overflow-x-auto">
-                    {growth.map((day, i) => {
-                      const height = (day.referrals / maxReferrals) * 100;
-                      return (
-                        <div
-                          key={`${day.date}-${i}`}
-                          className="flex flex-col items-center gap-2 group relative min-w-[8px] sm:min-w-0 flex-1"
-                        >
-                          <div
-                            className={`w-full rounded-t-lg transition-all ${
-                              day.referrals > 0
-                                ? "bg-indigo-500 group-hover:bg-indigo-600"
-                                : "bg-slate-200/60 dark:bg-slate-800"
-                            }`}
-                            style={{ height: `${day.referrals > 0 ? Math.max(height, 8) : 4}%` }}
-                          />
-                          {day.referrals > 0 && (
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                              {day.referrals} referral{day.referrals === 1 ? "" : "s"}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <div className="space-y-4 -mx-6 sm:-mx-8">
+                  <ReferralGrowthChart
+                    data={growth}
+                    granularity={granularity}
+                    formatDate={formatChartDate}
+                  />
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest px-6 sm:px-8 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <span>{formatChartDate(growth[0].date, granularity)}</span>
-                    <span>{granularity === "monthly" ? "Monthly trend" : "Daily trend"}</span>
+                    <span>{granularity === "weekly" ? "Weekly trend" : granularity === "monthly" ? "Monthly trend" : "Daily trend"}</span>
                     <span>{formatChartDate(growth[growth.length - 1].date, granularity)}</span>
                   </div>
                 </div>
@@ -387,7 +378,7 @@ export default function PerformancePage() {
                 <div className="py-12 flex justify-center">
                   <Loader2 className="animate-spin text-indigo-600" size={24} />
                 </div>
-              ) : activeGrowthDays.length === 0 ? (
+              ) : periodTotal === 0 ? (
                 <p className="text-slate-500 font-medium py-8 text-center">
                   No referral sign-ups in this period.
                 </p>
@@ -401,18 +392,21 @@ export default function PerformancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                      {activeGrowthDays
+                      {growth
+                        .filter((d) => d.referrals > 0)
                         .slice()
                         .reverse()
                         .map((day) => (
                           <tr key={day.date} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                             <td className="py-3 font-medium text-slate-700 dark:text-slate-300">
-                              {new Date(day.date).toLocaleDateString(undefined, {
-                                weekday: granularity === "daily" ? "short" : undefined,
-                                month: "short",
-                                day: granularity === "daily" ? "numeric" : undefined,
-                                year: "numeric",
-                              })}
+                              {granularity === "weekly"
+                                ? formatChartDate(day.date, granularity)
+                                : new Date(day.date).toLocaleDateString(undefined, {
+                                    weekday: granularity === "daily" ? "short" : undefined,
+                                    month: "short",
+                                    day: granularity === "daily" ? "numeric" : undefined,
+                                    year: "numeric",
+                                  })}
                             </td>
                             <td className="py-3">
                               <span className="inline-flex items-center gap-2 font-bold text-indigo-600">

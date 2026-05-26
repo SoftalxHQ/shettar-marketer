@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { apiBase, apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
+import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
 import { 
@@ -22,16 +23,28 @@ import {
 } from "lucide-react";
 
 type DashboardPayload = {
-  marketer?: { full_name?: string; referrer_code?: string; email?: string };
+  marketer?: {
+    full_name?: string;
+    referrer_code?: string;
+    email?: string;
+    account_type?: string;
+    agency_name?: string | null;
+    commission_balance?: number;
+  };
   total_referrals?: number;
   active_businesses?: number;
   verified_businesses?: number;
   referral_commission_earned?: number;
+  commission_balance?: number;
+  team_members_count?: number;
+  total_allocated?: number;
+  agency_name?: string;
   error?: string;
 };
 
 export default function MarketerDashboardPage() {
   const isClient = useIsClient();
+  const { profile } = useMarketerProfile();
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,10 +144,34 @@ export default function MarketerDashboardPage() {
   }
 
   const m = data.marketer || {};
+  const isAgency = (m as DashboardPayload["marketer"])?.account_type === "agency" || profile?.account_type === "agency";
+  const agencyName = data.agency_name || (m as DashboardPayload["marketer"])?.agency_name || profile?.agency_name;
 
   return (
     <BrandShell>
       <div className="space-y-10">
+        {isAgency && (
+          <section className="rounded-3xl border border-violet-200 dark:border-violet-800 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/40 p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-violet-600">Agency Account</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{agencyName || "Your Agency"}</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Team referrals pay into your commission pool. Release funds to members from Allocate.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/dashboard/team" className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-800 text-sm font-bold text-violet-700 dark:text-violet-300">
+                  Manage Team
+                </Link>
+                <Link href="/dashboard/allocate" className="px-4 py-2.5 rounded-2xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700">
+                  Release Funds
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Welcome Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
@@ -167,9 +204,25 @@ export default function MarketerDashboardPage() {
         </header>
 
         {/* Stats Grid */}
-        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <section className={`grid gap-6 sm:grid-cols-2 ${isAgency ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+          {isAgency && (
+            <>
+              <StatCard
+                label="Pool Balance"
+                value={`₦${Number(data.commission_balance ?? (m as DashboardPayload["marketer"])?.commission_balance ?? 0).toLocaleString()}`}
+                icon={Banknote}
+                color="violet"
+              />
+              <StatCard
+                label="Team Members"
+                value={String(data.team_members_count ?? 0)}
+                icon={Users}
+                color="sky"
+              />
+            </>
+          )}
           <StatCard 
-            label="Total Referrals" 
+            label={isAgency ? "Team Referrals" : "Total Referrals"} 
             value={String(data.total_referrals ?? "0")} 
             icon={Users} 
             color="indigo"
@@ -181,14 +234,23 @@ export default function MarketerDashboardPage() {
             color="blue"
           />
           <StatCard 
-            label="Referral Commission" 
+            label={isAgency ? "Team Commission" : "Referral Commission"} 
             value={`₦${Number(data.referral_commission_earned || 0).toLocaleString()}`} 
             icon={Banknote} 
             color="emerald"
           />
         </section>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className={`grid md:grid-cols-2 gap-6 ${isAgency ? "lg:grid-cols-3" : ""}`}>
+          {isAgency && (
+            <Link href="/dashboard/allocate" className="group">
+              <UiCard title="Release Funds" description="Move commission from your pool to a team member's wallet." icon={Banknote} className="hover:border-violet-500/50 transition-colors">
+                <div className="mt-4 flex items-center text-violet-600 font-bold gap-2">
+                  Allocate Now <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </UiCard>
+            </Link>
+          )}
           <Link href="/dashboard/performance" className="group">
             <UiCard title="View Performance" description="Analyze your growth and referral trends." icon={TrendingUp} className="hover:border-indigo-500/50 transition-colors">
               <div className="mt-4 flex items-center text-indigo-600 font-bold gap-2">

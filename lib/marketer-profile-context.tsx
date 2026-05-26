@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 
@@ -18,6 +19,9 @@ export type MarketerProfile = {
   email: string;
   referrer_code: string;
   status: string;
+  account_type?: "individual" | "agency" | "agency_member";
+  agency_name?: string | null;
+  agency_id?: number | null;
   bank_name?: string | null;
   account_number?: string | null;
   account_name?: string | null;
@@ -38,6 +42,7 @@ const MarketerProfileContext = createContext<MarketerProfileContextValue | null>
 
 export function MarketerProfileProvider({ children }: { children: ReactNode }) {
   const isClient = useIsClient();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<MarketerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +79,7 @@ export function MarketerProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isClient) return;
     refresh();
-  }, [isClient, refresh]);
+  }, [isClient, refresh, pathname]);
 
   const value = useMemo(
     () => ({ profile, loading, error, refresh }),

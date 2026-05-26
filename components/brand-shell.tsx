@@ -13,10 +13,13 @@ import {
   TrendingUp,
   Settings,
   Wallet,
-  Landmark
+  Landmark,
+  Users,
+  HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useMarketerProfile } from "@/lib/marketer-profile-context";
 
 export function BrandShell({
   children,
@@ -27,6 +30,8 @@ export function BrandShell({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { profile } = useMarketerProfile();
+  const isAgency = profile?.account_type === "agency";
 
   const logout = () => {
     localStorage.removeItem("marketer_token");
@@ -36,6 +41,10 @@ export function BrandShell({
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Performance", href: "/dashboard/performance", icon: TrendingUp },
+    ...(isAgency ? [
+      { name: "Team", href: "/dashboard/team", icon: Users },
+      { name: "Allocate", href: "/dashboard/allocate", icon: HandCoins },
+    ] : []),
     { name: "Finance", href: "/dashboard/finance", icon: Wallet },
     { name: "Bank Accounts", href: "/dashboard/bank-accounts", icon: Landmark },
     { name: "Security", href: "/dashboard/security", icon: ShieldCheck },
@@ -43,7 +52,7 @@ export function BrandShell({
 
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-50 flex">
+    <div className="h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-50">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -52,10 +61,10 @@ export function BrandShell({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — fixed on all breakpoints so it never scrolls with page content */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-transform lg:relative lg:translate-x-0",
-        !isSidebarOpen && "-translate-x-full"
+        "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-transform",
+        !isSidebarOpen && "-translate-x-full lg:translate-x-0"
       )}>
         <div className="h-full flex flex-col p-6">
           <div className="flex items-center justify-between gap-3 mb-10 px-2">
@@ -65,7 +74,9 @@ export function BrandShell({
               </div>
               <div className="min-w-0">
                 <p className="text-lg font-bold tracking-tight">Shettar</p>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Marketer</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">
+                  {isAgency ? (profile?.agency_name || "Agency") : "Marketer"}
+                </p>
               </div>
             </div>
             <ThemeToggle className="hidden lg:inline-flex shrink-0" />
@@ -73,7 +84,10 @@ export function BrandShell({
 
           <nav className="flex-1 space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || (item.href.includes("#") && pathname + item.href.substring(item.href.indexOf("#")) === item.href);
+              const isActive =
+                pathname === item.href ||
+                (item.href === "/dashboard/team" && pathname.startsWith("/dashboard/team")) ||
+                (item.href.includes("#") && pathname + item.href.substring(item.href.indexOf("#")) === item.href);
               return (
                 <Link
                   key={item.name}
@@ -107,7 +121,7 @@ export function BrandShell({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex h-screen flex-col min-w-0 lg:pl-72">
         {/* Top Header */}
         <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 lg:hidden">
           <div className="flex items-center gap-3">

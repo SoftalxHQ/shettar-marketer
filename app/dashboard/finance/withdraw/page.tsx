@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
 import { apiFetch } from "@/lib/api";
-import { useMarketerProfile } from "@/lib/marketer-profile-context";
+import { useMarketerProfile, type MarketerProfile } from "@/lib/marketer-profile-context";
 import { useIsClient } from "@/lib/useIsClient";
 import { toast } from "sonner";
 import { 
@@ -158,7 +158,7 @@ export default function WithdrawalPage() {
     );
   }
 
-  const marketerData = profile || {};
+  const marketerData: Partial<MarketerProfile> = profile ?? {};
   const availableMainBalance = Number(marketerData.balance || 0); 
   const availableCommission = Number(marketerData.commission_balance || 0);
   

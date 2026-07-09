@@ -1,4 +1,22 @@
-const raw = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3000";
+function inferredApiBaseFromWindow(): string | null {
+  if (typeof window === "undefined") return null;
+
+  const host = window.location.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1") return "http://127.0.0.1:3000";
+
+  // Shettar environments
+  if (host.includes("stg-mkt.shettar.com")) return "https://api.stg.shettar.com";
+  if (host.includes("mkt.shettar.com")) return "https://api-v1.shettar.com";
+
+  // Unknown host — no safe guess
+  return null;
+}
+
+const raw =
+  process.env.NEXT_PUBLIC_API_URL ||
+  inferredApiBaseFromWindow() ||
+  // Last-resort fallback: avoid breaking production builds due to missing env vars.
+  "https://api-v1.shettar.com";
 
 export function apiBase(): string {
   return raw.replace(/\/$/, "");

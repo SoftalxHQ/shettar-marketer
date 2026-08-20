@@ -1,0 +1,9 @@
+# Kamal production secrets are loaded from gitignored config files
+# (see .kamal/secrets). Builder args hardcode production API URL / APP_ENV.
+#
+# Optional local KEY=value lines in `.env.production` (already committed for this app):
+#
+# NEXT_PUBLIC_API_URL=
+# NEXT_PUBLIC_APP_ENV=production
+#
+# Docker Hub token: config/registry.yml (gitignored)

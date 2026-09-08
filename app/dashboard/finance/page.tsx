@@ -42,7 +42,14 @@ type Transaction = {
   display_type?: string;
   status: string;
   description?: string;
-  metadata?: { type?: string };
+  metadata?: {
+    type?: string;
+    net_amount?: number | string;
+    total_debit?: number | string;
+    commission_amount?: number | string;
+    paystack_transfer_fee?: number | string;
+    fee?: number | string;
+  };
   payment_method?: string;
   created_at: string;
 };
@@ -434,6 +441,11 @@ export default function FinancePage() {
                       const isWithdrawal = tx.transaction_type === "withdrawal";
                       const displayType = tx.display_type || (isWithdrawal ? "Withdrawal" : "Commission");
                       const amountValue = Number(tx.amount);
+                      const metaNum = (value: number | string | undefined) =>
+                        value == null || value === "" ? undefined : Number(value);
+                      const received = metaNum(tx.metadata?.net_amount);
+                      const debited = metaNum(tx.metadata?.total_debit);
+                      const fee = metaNum(tx.metadata?.commission_amount ?? tx.metadata?.paystack_transfer_fee ?? tx.metadata?.fee);
 
                       return (
                         <tr key={tx.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
@@ -474,6 +486,15 @@ export default function FinancePage() {
                             >
                               {isWithdrawal ? "-" : "+"}₦{Math.abs(amountValue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
+                            {isWithdrawal && received != null && (
+                              <div className="mt-1 space-y-0.5 text-[10px] font-medium text-slate-500">
+                                <div className="text-emerald-700 dark:text-emerald-400">Received: ₦{received.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                {debited != null && (
+                                  <div>Debited: ₦{debited.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                )}
+                                <div className="text-rose-500">Fee: ₦{(fee ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-5 text-right">
                             <span

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -26,24 +26,12 @@ import {
 
 interface WithdrawPreview {
   amount: number;
+  commission_rate: number;
   flat_fee: number;
+  commission_amount: number;
   net_amount: number;
-}
-
-/** Matches PaystackService.transfer_fee — tiered flat fee, not a percentage */
-function transferFee(amount: number): number {
-  if (amount <= 5_000) return 10;
-  if (amount <= 50_000) return 25;
-  return 50;
-}
-
-function buildPreview(withdrawAmount: number): WithdrawPreview {
-  const flat_fee = transferFee(withdrawAmount);
-  return {
-    amount: withdrawAmount,
-    flat_fee,
-    net_amount: Math.round((withdrawAmount - flat_fee) * 100) / 100,
-  };
+  total_debit: number;
+  sufficient: boolean;
 }
 
 function sanitizeAmountInput(raw: string): string {
@@ -66,6 +54,8 @@ export default function WithdrawalPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<WithdrawPreview | null>(null);
   const [previewPending, setPreviewPending] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewReqId = useRef(0);
 
   const PREVIEW_DEBOUNCE_MS = 2000;
 
@@ -83,18 +73,42 @@ export default function WithdrawalPage() {
     if (isNaN(num) || num <= 0) {
       setPreview(null);
       setPreviewPending(false);
+      setPreviewError(null);
       return;
     }
 
+    const reqId = ++previewReqId.current;
     setPreview(null);
     setPreviewPending(true);
-    const timer = setTimeout(() => {
-      setPreview(buildPreview(num));
-      setPreviewPending(false);
+    setPreviewError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await apiFetch(
+          `/api/v1/marketers/me/commission_preview?amount=${num}&wallet_type=${walletType}`,
+          { headers: getHeaders() },
+        );
+        if (reqId !== previewReqId.current) return;
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          setPreview(data);
+          setPreviewError(null);
+        } else {
+          setPreview(null);
+          setPreviewError(typeof data.error === "string" ? data.error : "Unable to calculate breakdown");
+        }
+      } catch {
+        if (reqId === previewReqId.current) {
+          setPreview(null);
+          setPreviewError("Unable to calculate breakdown");
+        }
+      } finally {
+        if (reqId === previewReqId.current) setPreviewPending(false);
+      }
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [amount]);
+  }, [amount, walletType, getHeaders]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +117,11 @@ export default function WithdrawalPage() {
     if (isNaN(withdrawAmount) || withdrawAmount <= 0) { toast.error("Please enter a valid amount"); return; }
 
     const availableBalance = walletType === "balance" ? Number(profile?.balance || 0) : Number(profile?.commission_balance || 0);
-    if (withdrawAmount > availableBalance) { toast.error("Insufficient funds"); return; }
+    const totalDebit = preview?.total_debit;
+    const insufficient =
+      preview?.sufficient === false ||
+      (typeof totalDebit === "number" ? totalDebit > availableBalance : withdrawAmount > availableBalance);
+    if (insufficient) { toast.error("Insufficient funds"); return; }
 
     if (!profile?.bank_code || !profile?.account_number) {
       toast.error("Please set up your bank details first.");
@@ -163,6 +181,13 @@ export default function WithdrawalPage() {
   const availableCommission = Number(marketerData.commission_balance || 0);
   
   const currentBalance = walletType === "balance" ? availableMainBalance : availableCommission;
+  const totalDebit = preview?.total_debit;
+  const insufficientFunds =
+    !!amount &&
+    !isNaN(withdrawAmount) &&
+    withdrawAmount > 0 &&
+    (preview?.sufficient === false ||
+      (typeof totalDebit === "number" ? totalDebit > currentBalance : withdrawAmount > currentBalance));
 
   return (
     <BrandShell>
@@ -301,16 +326,16 @@ export default function WithdrawalPage() {
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      This is the full amount withdrawn from your wallet. Transfer fee is deducted before payout (see breakdown below).
+                      You receive the amount you type. Your wallet is charged that amount plus the Paystack transfer fee.
                     </p>
                     {amount && !isNaN(Number(amount)) && Number(amount) > currentBalance && (
                       <p className="text-xs font-bold text-rose-500 flex items-center gap-1">
-                        <AlertCircle size={14} /> Amount exceeds available balance
+                        <AlertCircle size={14} /> Insufficient funds (amount plus transfer fee exceeds this wallet)
                       </p>
                     )}
                   </div>
 
-                  {(previewPending || preview) && (
+                  {(previewPending || preview || previewError) && (
                     <div className="bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl p-5 border border-indigo-100 dark:border-indigo-500/20">
                       <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-4">Transaction Breakdown</p>
                       {previewPending ? (
@@ -318,6 +343,8 @@ export default function WithdrawalPage() {
                           <Loader2 size={16} className="animate-spin" />
                           Calculating...
                         </div>
+                      ) : previewError ? (
+                        <p className="text-xs font-bold text-rose-500">{previewError}</p>
                       ) : preview ? (
                         <>
                           <div className="space-y-3">
@@ -326,8 +353,12 @@ export default function WithdrawalPage() {
                               <span className="font-black text-slate-900 dark:text-white">{fmt(preview.amount)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="font-bold text-slate-600 dark:text-slate-400">Transfer fee</span>
+                              <span className="font-bold text-slate-600 dark:text-slate-400">Paystack transfer fee</span>
                               <span className="font-black text-rose-500">− {fmt(preview.flat_fee)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="font-bold text-slate-600 dark:text-slate-400">Total to deduct</span>
+                              <span className="font-black text-slate-900 dark:text-white">{fmt(preview.total_debit)}</span>
                             </div>
                             <div className="border-t border-indigo-200 dark:border-indigo-500/20 pt-3 flex justify-between text-sm">
                               <span className="font-black text-indigo-900 dark:text-indigo-300">You will receive</span>
@@ -369,15 +400,19 @@ export default function WithdrawalPage() {
                   {preview && (
                     <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 text-sm space-y-2">
                       <div className="flex justify-between">
-                        <span className="font-bold text-slate-500">Amount</span>
+                        <span className="font-bold text-slate-500">Withdrawal amount</span>
                         <span className="font-black text-slate-900 dark:text-white">{fmt(preview.amount)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-bold text-slate-500">Fee</span>
+                        <span className="font-bold text-slate-500">Paystack transfer fee</span>
                         <span className="font-black text-rose-500">− {fmt(preview.flat_fee)}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="font-bold text-slate-500">Total to deduct</span>
+                        <span className="font-black text-slate-900 dark:text-white">{fmt(preview.total_debit)}</span>
+                      </div>
                       <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between">
-                        <span className="font-black text-slate-900 dark:text-white">You receive</span>
+                        <span className="font-black text-slate-900 dark:text-white">You will receive</span>
                         <span className="font-black text-emerald-600 dark:text-emerald-400">{fmt(preview.net_amount)}</span>
                       </div>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center pt-3 mt-3 border-t border-slate-200 dark:border-slate-800">
@@ -399,7 +434,7 @@ export default function WithdrawalPage() {
               <button
                 type="submit"
                 className={formButtonPrimaryClass}
-                disabled={isSubmitting || !amount || Number(amount) > currentBalance || (isOtpStep && otp.length < 6) || !marketerData.bank_code || !marketerData.bank_verified}
+                disabled={isSubmitting || !amount || insufficientFunds || previewPending || (!isOtpStep && !preview) || (isOtpStep && otp.length < 6) || !marketerData.bank_code || !marketerData.bank_verified}
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">

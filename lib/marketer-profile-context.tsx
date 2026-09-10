@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isMarketerSignedIn, MARKETER_PROFILE_KEY, MARKETER_SESSION_KEY } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 
 export type MarketerProfile = {
@@ -40,6 +40,11 @@ type MarketerProfileContextValue = {
 
 const MarketerProfileContext = createContext<MarketerProfileContextValue | null>(null);
 
+function persistMarketerProfile(marketer: MarketerProfile) {
+  localStorage.setItem(MARKETER_SESSION_KEY, "1");
+  localStorage.setItem(MARKETER_PROFILE_KEY, JSON.stringify(marketer));
+}
+
 export function MarketerProfileProvider({ children }: { children: ReactNode }) {
   const isClient = useIsClient();
   const pathname = usePathname();
@@ -48,8 +53,7 @@ export function MarketerProfileProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const token = localStorage.getItem("marketer_token");
-    if (!token) {
+    if (!isMarketerSignedIn()) {
       setProfile(null);
       setLoading(false);
       return;
@@ -58,9 +62,7 @@ export function MarketerProfileProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/api/v1/marketers/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/api/v1/marketers/me");
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed to load profile");
@@ -68,6 +70,7 @@ export function MarketerProfileProvider({ children }: { children: ReactNode }) {
         return;
       }
       setProfile(json.marketer);
+      if (json.marketer) persistMarketerProfile(json.marketer);
     } catch {
       setError("Failed to load profile");
       setProfile(null);

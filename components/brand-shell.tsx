@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
+import { logoutMarketer } from "@/lib/api";
 
 export function BrandShell({
   children,
@@ -34,8 +35,9 @@ export function BrandShell({
   const isAgency = profile?.account_type === "agency";
 
   const logout = () => {
-    localStorage.removeItem("marketer_token");
-    window.location.href = "/login";
+    void logoutMarketer().finally(() => {
+      window.location.href = "/login";
+    });
   };
 
   const navItems = [

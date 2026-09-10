@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -59,13 +59,6 @@ export default function WithdrawalPage() {
 
   const PREVIEW_DEBOUNCE_MS = 2000;
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
-
-  const getHeaders = useCallback(() => ({
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  }), [token]);
-
   const withdrawAmount = parseFloat(amount);
 
   useEffect(() => {
@@ -86,7 +79,6 @@ export default function WithdrawalPage() {
       try {
         const response = await apiFetch(
           `/api/v1/marketers/me/commission_preview?amount=${num}&wallet_type=${walletType}`,
-          { headers: getHeaders() },
         );
         if (reqId !== previewReqId.current) return;
         const data = await response.json().catch(() => ({}));
@@ -108,7 +100,7 @@ export default function WithdrawalPage() {
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [amount, walletType, getHeaders]);
+  }, [amount, walletType]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +130,6 @@ export default function WithdrawalPage() {
     try {
       const response = await apiFetch(`/api/v1/marketers/me/withdraw`, {
         method: "POST",
-        headers: getHeaders(),
         body: JSON.stringify({ amount: withdrawAmount, wallet_type: walletType, otp: isOtpStep ? otp : undefined })
       });
       

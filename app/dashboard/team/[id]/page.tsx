@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
 import { useIsClient } from "@/lib/useIsClient";
+import { isMarketerSignedIn } from "@/lib/api";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import {
   fetchMemberPerformance,
@@ -35,14 +36,14 @@ export default function AgencyMemberDetailPage() {
   const [statusReason, setStatusReason] = useState("");
   const [statusSaving, setStatusSaving] = useState(false);
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const load = useCallback(async () => {
-    if (!token || Number.isNaN(memberId)) return;
+    if (!signedIn || Number.isNaN(memberId)) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMemberPerformance(token, memberId);
+      const data = await fetchMemberPerformance(memberId);
       setMember(data.member);
       setPerformance(data.performance);
     } catch (e) {
@@ -50,7 +51,7 @@ export default function AgencyMemberDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, memberId]);
+  }, [signedIn, memberId]);
 
   useEffect(() => {
     if (!isClient || profileLoading) return;
@@ -69,10 +70,10 @@ export default function AgencyMemberDetailPage() {
 
   const handleStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !member) return;
+    if (!signedIn || !member) return;
     setStatusSaving(true);
     try {
-      const updated = await updateAgencyMemberStatus(token, member.id, {
+      const updated = await updateAgencyMemberStatus(member.id, {
         status: statusAction,
         reason: statusReason.trim() || undefined,
       });

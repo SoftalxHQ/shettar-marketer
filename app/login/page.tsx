@@ -36,6 +36,7 @@ function LoginForm() {
       const res = await fetch(`${apiBase()}/api/v1/marketers/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
@@ -43,7 +44,11 @@ function LoginForm() {
         toast.error(data.error || "Invalid credentials. Please try again.");
         return;
       }
-      localStorage.setItem("marketer_token", data.token);
+      localStorage.removeItem("marketer_token");
+      localStorage.setItem("marketer_session", "1");
+      if (data.marketer) {
+        localStorage.setItem("marketer_profile", JSON.stringify(data.marketer));
+      }
       toast.success("Welcome back! Redirecting to dashboard...");
       router.push("/dashboard");
     } catch {

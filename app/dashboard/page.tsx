@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { apiBase, apiFetch } from "@/lib/api";
+import { apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import { BrandShell } from "@/components/brand-shell";
@@ -48,17 +48,15 @@ export default function MarketerDashboardPage() {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   useEffect(() => {
-    if (!isClient || !token) return;
+    if (!isClient || !signedIn) return;
 
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch(`/api/v1/marketers/me/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await apiFetch(`/api/v1/marketers/me/dashboard`);
         const json = (await res.json()) as DashboardPayload;
         if (cancelled) return;
         if (!res.ok) {
@@ -74,7 +72,7 @@ export default function MarketerDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [isClient, token]);
+  }, [isClient, signedIn]);
 
   const copyReferrerCode = () => {
     const code = data?.marketer?.referrer_code;
@@ -92,7 +90,7 @@ export default function MarketerDashboardPage() {
     );
   }
 
-  if (!token) {
+  if (!signedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
         <UiCard 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ElementType } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { ReferralGrowthChart } from "@/components/referral-growth-chart";
@@ -154,7 +154,7 @@ export default function PerformancePage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   useEffect(() => {
     const today = new Date();
@@ -166,7 +166,7 @@ export default function PerformancePage() {
 
   const fetchPerformance = useCallback(
     async (preset: PeriodPreset, start: string, end: string, initial = false) => {
-      if (!token) return;
+      if (!signedIn) return;
 
       if (initial) setLoading(true);
       else setChartLoading(true);
@@ -179,7 +179,6 @@ export default function PerformancePage() {
         const qs = params.toString();
         const res = await apiFetch(
           `/api/v1/marketers/me/performance${qs ? `?${qs}` : ""}`,
-          { headers: { Authorization: `Bearer ${token}` } },
         );
         const json = (await res.json()) as PerformancePayload;
         if (!res.ok) {
@@ -195,17 +194,17 @@ export default function PerformancePage() {
         else setChartLoading(false);
       }
     },
-    [token],
+    [signedIn],
   );
 
   useEffect(() => {
-    if (!isClient || !token) {
+    if (!isClient || !signedIn) {
       if (isClient) setLoading(false);
       return;
     }
     const range = resolveRange(period, customStart, customEnd);
     fetchPerformance(period, range.start, range.end, true);
-  }, [isClient, token]); // eslint-disable-line react-hooks/exhaustive-deps -- initial load only
+  }, [isClient, signedIn]); // eslint-disable-line react-hooks/exhaustive-deps -- initial load only
 
   const applyPeriod = (preset: PeriodPreset) => {
     setPeriod(preset);

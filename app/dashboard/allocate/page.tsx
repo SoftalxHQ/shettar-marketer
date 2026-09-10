@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
 import { useIsClient } from "@/lib/useIsClient";
+import { isMarketerSignedIn } from "@/lib/api";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import {
   allocateAgencyFunds,
@@ -44,17 +45,17 @@ export default function AgencyAllocatePage() {
     notes: "",
   });
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!signedIn) return;
     setLoading(true);
     setError(null);
     try {
       const [agency, team, history] = await Promise.all([
-        fetchAgencySummary(token),
-        fetchAgencyMembers(token),
-        fetchAgencyAllocations(token),
+        fetchAgencySummary(),
+        fetchAgencyMembers(),
+        fetchAgencyAllocations(),
       ]);
       setSummary(agency);
       setMembers(team);
@@ -64,7 +65,7 @@ export default function AgencyAllocatePage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [signedIn]);
 
   useEffect(() => {
     if (!isClient || profileLoading) return;
@@ -72,12 +73,12 @@ export default function AgencyAllocatePage() {
       router.replace("/dashboard");
       return;
     }
-    if (token) load();
-  }, [isClient, profileLoading, profile, token, load, router]);
+    if (signedIn) load();
+  }, [isClient, profileLoading, profile, signedIn, load, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!signedIn) return;
 
     const amount = parseFloat(form.amount);
     if (Number.isNaN(amount) || amount <= 0) {
@@ -91,7 +92,7 @@ export default function AgencyAllocatePage() {
 
     setSubmitting(true);
     try {
-      await allocateAgencyFunds(token, {
+      await allocateAgencyFunds({
         member_id: Number(form.member_id),
         amount,
         wallet_type: form.wallet_type,

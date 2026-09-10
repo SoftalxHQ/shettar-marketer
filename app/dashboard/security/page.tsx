@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { apiBase, apiFetch } from "@/lib/api";
+import { apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
@@ -20,11 +20,11 @@ export default function SecurityPage() {
   const [newPass2, setNewPass2] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!signedIn) return;
     
     if (newPass !== newPass2) {
       toast.error("New passwords do not match");
@@ -36,7 +36,6 @@ export default function SecurityPage() {
       const res = await apiFetch(`/api/v1/marketers/me/password`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

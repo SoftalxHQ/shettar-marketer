@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
-import { apiBase, apiFetch } from "@/lib/api";
+import { apiBase, apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useIsClient } from "@/lib/useIsClient";
 import { 
   Landmark, 
@@ -40,7 +40,7 @@ type BankAccount = {
 
 export default function BankAccountsPage() {
   const isClient = useIsClient();
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const [banks, setBanks] = useState<Bank[]>([]);
   const [banksLoading, setBanksLoading] = useState(false);
@@ -61,15 +61,13 @@ export default function BankAccountsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isClient || !token) return;
+    if (!isClient || !signedIn) return;
 
     let cancelled = false;
 
     const loadBankDetails = async () => {
       try {
-        const bankRes = await apiFetch(`/api/v1/marketers/me/bank_details`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const bankRes = await apiFetch(`/api/v1/marketers/me/bank_details`);
         if (cancelled) return;
         if (bankRes.ok) {
           const { bank_details: m } = await bankRes.json();
@@ -115,7 +113,7 @@ export default function BankAccountsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isClient, token]);
+  }, [isClient, signedIn]);
 
   // Auto-resolve account
   useEffect(() => {
@@ -154,9 +152,8 @@ export default function BankAccountsPage() {
     try {
       const res = await apiFetch(`/api/v1/marketers/me/bank_details`, {
         method: "PATCH",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
         },
         body: JSON.stringify({
           bank_details: {
@@ -211,7 +208,6 @@ export default function BankAccountsPage() {
     try {
       const res = await apiFetch(`/api/v1/marketers/me/bank_details`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (!res.ok) throw new Error("Failed to delete bank details");

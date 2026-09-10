@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { BrandShell } from "@/components/brand-shell";
 import { UiCard } from "@/components/ui-card";
 import { useIsClient } from "@/lib/useIsClient";
+import { isMarketerSignedIn } from "@/lib/api";
 import { useMarketerProfile } from "@/lib/marketer-profile-context";
 import {
   fetchAgencySummary,
@@ -33,16 +34,16 @@ export default function AgencyTeamPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", phone_number: "" });
 
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!signedIn) return;
     setLoading(true);
     setError(null);
     try {
       const [agency, team] = await Promise.all([
-        fetchAgencySummary(token),
-        fetchAgencyMembers(token),
+        fetchAgencySummary(),
+        fetchAgencyMembers(),
       ]);
       setSummary(agency);
       setMembers(team);
@@ -51,7 +52,7 @@ export default function AgencyTeamPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [signedIn]);
 
   useEffect(() => {
     if (!isClient || profileLoading) return;
@@ -59,15 +60,15 @@ export default function AgencyTeamPage() {
       router.replace("/dashboard");
       return;
     }
-    if (token) load();
-  }, [isClient, profileLoading, profile, token, load, router]);
+    if (signedIn) load();
+  }, [isClient, profileLoading, profile, signedIn, load, router]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!signedIn) return;
     setSaving(true);
     try {
-      await createAgencyMember(token, form);
+      await createAgencyMember(form);
       toast.success("Team member invited. Login credentials sent via email.");
       setShowAdd(false);
       setForm({ full_name: "", email: "", phone_number: "" });

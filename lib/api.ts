@@ -18,13 +18,49 @@ const raw =
   // Last-resort fallback: avoid breaking production builds due to missing env vars.
   "https://api-v1.shettar.com";
 
+export const MARKETER_TOKEN_KEY = "marketer_token";
+export const MARKETER_SESSION_KEY = "marketer_session";
+export const MARKETER_PROFILE_KEY = "marketer_profile";
+
 export function apiBase(): string {
   return raw.replace(/\/$/, "");
 }
 
+export function isMarketerSignedIn(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    localStorage.getItem(MARKETER_SESSION_KEY) === "1" ||
+    !!localStorage.getItem(MARKETER_PROFILE_KEY)
+  );
+}
+
+export function clearMarketerClientAuth(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(MARKETER_TOKEN_KEY);
+  localStorage.removeItem(MARKETER_SESSION_KEY);
+  localStorage.removeItem(MARKETER_PROFILE_KEY);
+}
+
+async function clearMarketerCookieSession(): Promise<void> {
+  try {
+    await fetch(`${apiBase()}/api/v1/marketers/logout`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+  } catch {
+    // Ignore logout network errors — local session still needs clearing.
+  }
+}
+
+export async function logoutMarketer(): Promise<void> {
+  await clearMarketerCookieSession();
+  clearMarketerClientAuth();
+}
+
 function forceLogout(reason?: string) {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("marketer_token");
+  void clearMarketerCookieSession();
+  clearMarketerClientAuth();
   const msg = reason ? `?reason=${encodeURIComponent(reason)}` : "";
   window.location.href = `/login${msg}`;
 }
@@ -41,8 +77,8 @@ function isAccountInactiveError(message: string): boolean {
 /** Coalesce identical in-flight GETs (e.g. React Strict Mode double-mount in dev). */
 const inflightGets = new Map<string, Promise<Response>>();
 
-function inflightGetKey(path: string, headers: Record<string, string>): string {
-  return `${path}:${headers.Authorization ?? ""}`;
+function inflightGetKey(path: string): string {
+  return path;
 }
 
 async function executeFetch(
@@ -50,7 +86,11 @@ async function executeFetch(
   options: RequestInit,
   headers: Record<string, string>,
 ): Promise<Response> {
-  const res = await fetch(`${apiBase()}${path}`, { ...options, headers });
+  const res = await fetch(`${apiBase()}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 
   if (res.status === 401) {
     forceLogout("session_expired");
@@ -75,29 +115,25 @@ async function executeFetch(
 
 /**
  * Drop-in replacement for fetch() that logs the marketer out only when the
- * account is actually inactive (401 = bad token, specific 403 messages only).
+ * account is actually inactive (401 = expired cookie session, specific 403 messages only).
  */
 export async function apiFetch(
   path: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("marketer_token") : null;
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  delete headers["Authorization"];
 
   const method = (options.method ?? "GET").toUpperCase();
   if (method !== "GET") {
     return executeFetch(path, options, headers);
   }
 
-  const key = inflightGetKey(path, headers);
+  const key = inflightGetKey(path);
   let pending = inflightGets.get(key);
   if (!pending) {
     pending = executeFetch(path, options, headers).finally(() => {

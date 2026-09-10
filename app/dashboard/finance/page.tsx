@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BrandShell } from "@/components/brand-shell";
-import { apiBase, apiFetch } from "@/lib/api";
+import { apiBase, apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useIsClient } from "@/lib/useIsClient";
 import {
@@ -99,7 +99,7 @@ function buildExportQuery(filters: TxFilters) {
 export default function FinancePage() {
   const isClient = useIsClient();
   const router = useRouter();
-  const token = isClient ? localStorage.getItem("marketer_token") : null;
+  const signedIn = isClient && isMarketerSignedIn();
 
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
@@ -115,14 +115,12 @@ export default function FinancePage() {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    if (!isClient || !token) return;
+    if (!isClient || !signedIn) return;
 
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch(`/api/v1/marketers/me/finance`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await apiFetch(`/api/v1/marketers/me/finance`);
         const json = await res.json();
         if (!cancelled && res.ok) setSummary(json);
       } catch (err) {
@@ -135,16 +133,15 @@ export default function FinancePage() {
     return () => {
       cancelled = true;
     };
-  }, [isClient, token]);
+  }, [isClient, signedIn]);
 
   const fetchTransactions = useCallback(
     async (pageNum: number, activeFilters: TxFilters) => {
-      if (!token) return;
+      if (!signedIn) return;
       setTxLoading(true);
       try {
         const res = await apiFetch(
           `/api/v1/marketers/me/transactions?${buildQuery(activeFilters, pageNum)}`,
-          { headers: { Authorization: `Bearer ${token}` } },
         );
         const json = await res.json();
         if (res.ok) {
@@ -158,13 +155,13 @@ export default function FinancePage() {
         setTxLoading(false);
       }
     },
-    [token],
+    [signedIn],
   );
 
   useEffect(() => {
-    if (!isClient || !token) return;
+    if (!isClient || !signedIn) return;
     fetchTransactions(page, filters);
-  }, [isClient, token, page, filters, fetchTransactions]);
+  }, [isClient, signedIn, page, filters, fetchTransactions]);
 
   const applyFilters = () => {
     setFilters(draftFilters);
@@ -186,13 +183,13 @@ export default function FinancePage() {
     filters.end_date !== "";
 
   const handleExport = async () => {
-    if (!token) return;
+    if (!signedIn) return;
     setIsExporting(true);
     const toastId = toast.loading("Exporting transactions...");
     try {
       const query = buildExportQuery(filters);
       const res = await fetch(`${apiBase()}/api/v1/marketers/me/export_transactions?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Export failed");
 

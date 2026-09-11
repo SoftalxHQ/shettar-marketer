@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BrandShell } from "@/components/brand-shell";
-import { apiBase, apiFetch, isMarketerSignedIn } from "@/lib/api";
+import { apiFetch, isMarketerSignedIn } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useIsClient } from "@/lib/useIsClient";
 import {
@@ -188,9 +188,8 @@ export default function FinancePage() {
     const toastId = toast.loading("Exporting transactions...");
     try {
       const query = buildExportQuery(filters);
-      const res = await fetch(`${apiBase()}/api/v1/marketers/me/export_transactions?${query}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/v1/marketers/me/export_transactions?${query}`);
+      if (res.status === 401) return;
       if (!res.ok) throw new Error("Export failed");
 
       const blob = await res.blob();
